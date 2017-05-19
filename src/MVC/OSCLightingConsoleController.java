@@ -3,17 +3,11 @@
  * To change this template file, choose Tools | Templates
  * and open the template in the editor.
  */
-package JavaMVCControllers;
+package MVC;
 
-import DataProcessingAlgorithms.OnetoOne;
-import JavaMVCViews.*;
-import JavaMVCModels.*;
 import java.awt.event.ActionListener;
 import java.net.SocketException;
 import java.util.concurrent.ExecutionException;
-import java.util.concurrent.ExecutorService;
-import java.util.concurrent.Executors;
-import java.util.concurrent.Future;
 import java.util.logging.Level;
 import java.util.logging.Logger;
 
@@ -52,7 +46,6 @@ public class OSCLightingConsoleController implements ActionListener{
     public void connectDMX(String port) throws InterruptedException {
         if(model.checkDMXPresence(port)) {
             view.displayDMXStatus("Connected");
-            model.setDMXCommPort(port);
             dmxConnected = true;
         } else {
             view.displayDMXStatus("Could not find DMXPro.");
@@ -78,16 +71,19 @@ public class OSCLightingConsoleController implements ActionListener{
         }
         if("Start DMX".equals(command)) {
             dmxStarted = true;
-            while(dmxStarted && dmxConnected) {
-                try {
-                    model.updateDMXData();
-                } catch (InterruptedException | ExecutionException ex) {
-                    Logger.getLogger(OSCLightingConsoleController.class.getName()).log(Level.SEVERE, null, ex);
-                }
+            try {
+                model.updateDMXData(dmxStarted, dmxConnected);
+            } catch (InterruptedException | ExecutionException ex) {
+                Logger.getLogger(OSCLightingConsoleController.class.getName()).log(Level.SEVERE, null, ex);
             }
         }
         if("Stop DMX".equals(command)) {
             dmxStarted = false;
+            try {
+                model.updateDMXData(dmxStarted, dmxConnected);
+            } catch (InterruptedException | ExecutionException ex) {
+                Logger.getLogger(OSCLightingConsoleController.class.getName()).log(Level.SEVERE, null, ex);
+            }
         }
         if("Add DMX Fixture".equals(command)) {
             String type = view.dmxFixtureType.getText();

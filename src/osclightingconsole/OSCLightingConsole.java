@@ -5,9 +5,9 @@
  */
 package osclightingconsole;
 
-import JavaMVCControllers.*;
-import JavaMVCViews.*;
-import JavaMVCModels.*;
+import MVC.OSCLightingConsoleView;
+import MVC.OSCLightingConsoleModel;
+import MVC.OSCLightingConsoleController;
 import java.net.SocketException;
 
 /**

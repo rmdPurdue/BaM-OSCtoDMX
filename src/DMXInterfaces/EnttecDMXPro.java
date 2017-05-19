@@ -16,32 +16,22 @@ import java.util.Arrays;
 public class EnttecDMXPro extends Thread {
     
     private byte[] dmxProMessage = null;
-    
     private String dmxProSerialPortName = null;
-    
     private int dmxProBaudRate = -1;
-    
     private SerialPort dmxProSerialPort;
-    
     private int universeSize = 512;
-    
-    private long refreshDelay = Long.MAX_VALUE;
-    
-    private long sleepDelay = 1;
-    
+    private final long refreshDelay = Long.MAX_VALUE;
+    private final long sleepDelay = 1;
     private long lastSend = System.currentTimeMillis();
-    
     private boolean needSend = true;
-    
-    private boolean buffered = true;
-    
+    private final boolean buffered = true;
     private boolean presence = false;
     
     public EnttecDMXPro(int channels) {
         universeSize = channels;
     }
-    
-    public void setupDMXPro(String portName, int baudRate) {
+
+    public void startDMX() {
         int dataSize = universeSize;
         dataSize++;
         byte[] message = new byte[universeSize + 6];
@@ -54,13 +44,12 @@ public class EnttecDMXPro extends Thread {
             message[5+i] = 0;
         }
         message[universeSize + 5] = (byte)0xE7;
-        dmxProMessage = Arrays.copyOf(message, message.length);
-        dmxProSerialPortName = portName;
-        dmxProBaudRate = baudRate;
-        
-        dmxProSerialPort = SerialPort.getCommPort(dmxProSerialPortName);
-        dmxProSerialPort.setBaudRate(dmxProBaudRate);
-        dmxProSerialPort.openPort();
+        this.dmxProMessage = Arrays.copyOf(message, message.length);
+    }
+    
+    public void stopDMX() {
+        this.reset();
+        this.dmxProSerialPort.closePort();
     }
     
     public boolean areYouThere(String port) throws InterruptedException {
@@ -71,7 +60,7 @@ public class EnttecDMXPro extends Thread {
         message[3] = (byte)0x00;
         message[4] = (byte)0xE7;
         
-        dmxProSerialPort = SerialPort.getCommPort(port);
+        this.dmxProSerialPort = SerialPort.getCommPort(port);
         dmxProSerialPort.addDataListener(new SerialPortDataListener() {
             @Override
             public int getListeningEvents() { return SerialPort.LISTENING_EVENT_DATA_AVAILABLE; }
@@ -88,7 +77,6 @@ public class EnttecDMXPro extends Thread {
         });
         dmxProSerialPort.openPort();
         dmxProSerialPort.writeBytes(message, message.length);
-        Thread.sleep(500);
         return presence;
     }
     
@@ -104,16 +92,21 @@ public class EnttecDMXPro extends Thread {
         set(channel, new int[]{value});
     }
     
+    public void set(int channel, float value) {
+        set(channel, (int)value);
+    }
+    
     public void set(int channel, int[] values) {
-        boolean needSend = false;
-        
+        needSend = false;
+ 
         for(int i = 0; i < values.length; i++) {
             if(dmxProMessage!=null) {
                 if(channel + 4 + i < dmxProMessage.length) {
-                    if(dmxProMessage[4 + channel + i] != (byte)values[i]) {
+                    if(dmxProMessage[channel + 4 + i] != (byte)values[i]) {
+                        System.out.println(channel + " : " + values[i]);
                         dmxProMessage[channel + 4 + i] = (byte)values[i];
-                        needSend = true;
                     }
+                    needSend = true;
                 }
             }
         }
@@ -131,7 +124,10 @@ public class EnttecDMXPro extends Thread {
             lastSend = now;
             if(dmxProMessage != null) {
                 if(dmxProSerialPort!=null) {
-                    dmxProSerialPort.writeBytes(dmxProMessage, universeSize+6);
+                    System.out.println("Writing: " + dmxProSerialPort.writeBytes(dmxProMessage, universeSize+6));
+                    for(int i = 0; i < dmxProMessage.length; i++) {
+                        System.out.println(i-4 + " : " + dmxProMessage[i]);
+                    }
                 } else {
                     System.out.println("Not sending DMX frame. Serial port is null!");
                 }

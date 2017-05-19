@@ -3,7 +3,7 @@
  * To change this template file, choose Tools | Templates
  * and open the template in the editor.
  */
-package JavaMVCModels;
+package MVC;
 
 import DMXInterfaces.*;
 import DataProcessingAlgorithms.OnetoOne;
@@ -16,9 +16,8 @@ import com.illposed.osc.*;
 import java.util.HashMap;
 import java.util.Map;
 import java.util.concurrent.ExecutionException;
-import java.util.concurrent.ExecutorService;
-import java.util.concurrent.Executors;
-import java.util.concurrent.Future;
+import java.util.concurrent.locks.ReadWriteLock;
+import java.util.concurrent.locks.ReentrantReadWriteLock;
 
 /**
  *
@@ -35,18 +34,34 @@ public class OSCLightingConsoleModel extends java.util.Observable {
     public Map universeA = new HashMap();
     private final ArrayList fixtureList = new ArrayList();
     public int[] universeALevels = new int[512];
-    
+    OnetoOne algorithm = new OnetoOne();
+
     /**
-     * Opens a communications port on "port" and prepares a message for the
-     * Enttec DMX Pro USB adaptor, based the DMX Pro API. Returns true if
-     * successful.
-     * @param port
-     * @return 
+     * Variables and instances required for OSC connectivity. Handler1 defines
+     * the response to received OSC messages.
      */
-    public boolean setDMXCommPort(String port) {
-        DMXPro.setupDMXPro(port, 115000);
-        return true;
-    }
+    public Map<String, Object> oscData = new HashMap<>();
+    OSCPortIn receiver;
+    ReadWriteLock lock = new ReentrantReadWriteLock();
+    OSCListener handler1 = (java.util.Date time, OSCMessage message) -> {
+        Object[] values = message.getArguments();
+        oscData.put(message.getAddress(), values[0]);
+        universeALevels = algorithm.getLevels(oscData, universeA);
+        DMXPro.set(1, universeALevels);
+        /*
+        lock.writeLock().lock();
+        try {
+            oscData.put(message.getAddress(), values[0]);
+        } finally {
+            lock.writeLock().unlock();
+        }*/
+    };
+
+    /**
+     * Variables for handling background threading of DMX updates
+     */
+//    OnetoOne algorithm = new OnetoOne(oscData, universeA, lock, DMXPro);
+//    Thread dmxThread = new Thread(algorithm, "DMX Thread");
     
     /**
      * Returns a user-readable list of connected communication port
@@ -101,24 +116,17 @@ public class OSCLightingConsoleModel extends java.util.Observable {
         notifyObservers(fixture);
     }
     
-    public void updateDMXData() throws InterruptedException, ExecutionException {
-        ExecutorService pool = Executors.newFixedThreadPool(5);
-        OnetoOne algorithm = new OnetoOne(oscData,universeA);
-        Future levels = pool.submit(algorithm);
-        universeALevels = (int[]) levels.get();
+    public void updateDMXData(boolean started, boolean connected) throws InterruptedException, ExecutionException {
+        if(started && connected) {
+            DMXPro.startDMX();
+            //dmxThread.start();
+        }
+        if(!started) {
+            DMXPro.stopDMX();
+            System.out.println("DMX Stopped.");
+            //dmxThread.interrupt();
+        }
     }
-    
-    /**
-     * Variables and instances required for OSC connectivity. Handler1 defines
-     * the response to received OSC messages.
-     */
-    public Map oscData = new HashMap();
-    OSCPortIn receiver;
-    OSCListener handler1 = (java.util.Date time, OSCMessage message) -> {
-        Object[] values = message.getArguments();
-        oscData.put(message.getAddress(), values[0]);
-    };
-
     
     /**
      * Method to create the OSC connection on port "receiverPort" for
@@ -137,7 +145,12 @@ public class OSCLightingConsoleModel extends java.util.Observable {
      */
     public void addNewListener(String address) {
         receiver.addListener(address, handler1);
-        oscData.put(address, 0);
+        lock.writeLock().lock();
+        try {
+            oscData.put(address, 0);
+        } finally {
+            lock.writeLock().unlock();
+        }
         setChanged();
         notifyObservers(oscData);
     }
