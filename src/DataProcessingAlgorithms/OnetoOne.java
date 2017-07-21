@@ -37,6 +37,9 @@ public class OnetoOne /*implements Runnable*/ {
   */  
     /**
      *
+     * @param oscData
+     * @param universeA
+     * @return 
      */
 
     public int[] getLevels(Map oscData, Map universeA) {

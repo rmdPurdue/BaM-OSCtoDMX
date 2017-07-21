@@ -48,6 +48,8 @@ public class OSCLightingConsoleModel extends java.util.Observable {
         oscData.put(message.getAddress(), values[0]);
         universeALevels = algorithm.getLevels(oscData, universeA);
         DMXPro.set(1, universeALevels);
+        setChanged();
+        notifyObservers(universeALevels);
         /*
         lock.writeLock().lock();
         try {
@@ -119,6 +121,7 @@ public class OSCLightingConsoleModel extends java.util.Observable {
     public void updateDMXData(boolean started, boolean connected) throws InterruptedException, ExecutionException {
         if(started && connected) {
             DMXPro.startDMX();
+            System.out.println("DMX Started.");
             //dmxThread.start();
         }
         if(!started) {

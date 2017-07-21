@@ -77,6 +77,8 @@ public class EnttecDMXPro extends Thread {
         });
         dmxProSerialPort.openPort();
         dmxProSerialPort.writeBytes(message, message.length);
+        Thread.sleep(500);
+        if(!presence) {dmxProSerialPort.closePort();}
         return presence;
     }
     
@@ -103,7 +105,7 @@ public class EnttecDMXPro extends Thread {
             if(dmxProMessage!=null) {
                 if(channel + 4 + i < dmxProMessage.length) {
                     if(dmxProMessage[channel + 4 + i] != (byte)values[i]) {
-                        System.out.println(channel + " : " + values[i]);
+//                        System.out.println("Set Channel " + channel + " : " + values[i]);
                         dmxProMessage[channel + 4 + i] = (byte)values[i];
                     }
                     needSend = true;
@@ -124,9 +126,9 @@ public class EnttecDMXPro extends Thread {
             lastSend = now;
             if(dmxProMessage != null) {
                 if(dmxProSerialPort!=null) {
-                    System.out.println("Writing: " + dmxProSerialPort.writeBytes(dmxProMessage, universeSize+6));
+                    dmxProSerialPort.writeBytes(dmxProMessage, universeSize+6);
                     for(int i = 0; i < dmxProMessage.length; i++) {
-                        System.out.println(i-4 + " : " + dmxProMessage[i]);
+//                        System.out.println("Write channel: " + (i-4) + " : " + dmxProMessage[i]);
                     }
                 } else {
                     System.out.println("Not sending DMX frame. Serial port is null!");
